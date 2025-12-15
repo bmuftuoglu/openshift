@@ -19,7 +19,7 @@
     # Jenkins workspace içindeki configs/dhcpd.conf dosyasını remote'a candidate olarak atıyoruz
     - name: Copy candidate config to remote
       ansible.builtin.copy:
-        src: "configs/dhcpd.conf"
+        src: "{{ playbook_dir }}/../configs/dhcpd.conf"
         dest: "{{ candidate_conf }}"
         owner: root
         group: root
