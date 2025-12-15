@@ -6,7 +6,7 @@
 
   vars:
     remote_conf: "/etc/dhcp/dhcpd.conf"
-    candidate_conf: "/tmp/dhcpd.conf.candidate"
+    candidate_conf: "/etc/dhcpd.conf.candidate"
     backup_conf: "{{ remote_conf }}.bak.{{ lookup('pipe','date +%F-%H%M%S') }}"
 
   tasks:
@@ -23,10 +23,14 @@
         owner: root
         group: root
         mode: "0644"
+        
+    - name: Restore SELinux context on candidate (best effort)
+      ansible.builtin.command: "restorecon -v {{ candidate_conf }}"
+      changed_when: false
+      failed_when: false
 
     - name: Validate candidate config
       ansible.builtin.command: "dhcpd -t -cf {{ candidate_conf }}"
-      become: true
       register: dhcp_test
       changed_when: false
 
