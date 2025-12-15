@@ -1,0 +1,50 @@
+---
+- name: DHCP config update (GitHub -> candidate -> dhcpd -t -> deploy)
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    # Remote paths
+    remote_conf: "/etc/dhcp/dhcpd.conf"
+    candidate_conf: "/tmp/dhcpd.conf.candidate"
+
+  tasks:
+    - name: Ensure candidate directory ok
+      ansible.builtin.file:
+        path: /tmp
+        state: directory
+        mode: "1777"
+
+    # Jenkins workspace içindeki configs/dhcpd.conf dosyasını remote'a candidate olarak atıyoruz
+    - name: Copy candidate config to remote
+      ansible.builtin.copy:
+        src: "configs/dhcpd.conf"
+        dest: "{{ candidate_conf }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Validate candidate config
+      ansible.builtin.command: "dhcpd -t -cf {{ candidate_conf }}"
+      register: dhcp_test
+      changed_when: false
+
+    - name: Fail if validation failed
+      ansible.builtin.fail:
+        msg: "dhcpd -t failed: {{ dhcp_test.stderr | default(dhcp_test.stdout) }}"
+      when: dhcp_test.rc != 0
+
+    - name: Backup current config
+      ansible.builtin.copy:
+        src: "{{ remote_conf }}"
+        dest: "{{ remote_conf }}.bak.{{ lookup('pipe','date +%F-%H%M%S') }}"
+        remote_src: true
+
+    - name: Deploy candidate to live
+      ansible.builtin.command: "mv {{ candidate_conf }} {{ remote_conf }}"
+
+    - name: Restart DHCP service (Fedora/RHEL: dhcpd)
+      ansible.builtin.systemd:
+        name: dhcpd
+        state: restarted
