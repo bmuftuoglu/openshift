@@ -44,7 +44,7 @@
     - name: Deploy candidate to live
       ansible.builtin.command: "mv {{ candidate_conf }} {{ remote_conf }}"
 
-    - name: Restart DHCP service (Fedora/RHEL: dhcpd)
+    - name: Restart DHCP service
       ansible.builtin.systemd:
         name: dhcpd
         state: restarted
