@@ -6,7 +6,7 @@
 
   vars:
     remote_conf: "/etc/dhcp/dhcpd.conf"
-    candidate_conf: "/etc/dhcpd.conf.candidate"
+    candidate_conf: "/etc/dhcp/dhcpd.conf.candidate"
     backup_conf: "{{ remote_conf }}.bak.{{ lookup('pipe','date +%F-%H%M%S') }}"
 
   tasks:
