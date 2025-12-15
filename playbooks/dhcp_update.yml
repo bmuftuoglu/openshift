@@ -51,8 +51,8 @@
 
     - name: Restart DHCP service
       ansible.builtin.systemd:
-      name: dhcpd
-      state: restarted
+        name: dhcpd
+        state: restarted
       become: true
       register: dhcpd_restart
       failed_when: dhcpd_restart is failed
