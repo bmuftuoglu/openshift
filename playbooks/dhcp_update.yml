@@ -60,7 +60,7 @@
 
         - name: Restart DHCP service
           ansible.builtin.systemd:
-            name: dhcpd
+            name: isc-dhcp-server
             state: restarted
 
       rescue:
