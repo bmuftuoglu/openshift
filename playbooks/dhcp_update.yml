@@ -26,6 +26,7 @@
 
     - name: Validate candidate config
       ansible.builtin.command: "dhcpd -t -cf {{ candidate_conf }}"
+      become: true
       register: dhcp_test
       changed_when: false
 
