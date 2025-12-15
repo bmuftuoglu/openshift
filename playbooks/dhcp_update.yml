@@ -48,3 +48,30 @@
       ansible.builtin.systemd:
         name: dhcpd
         state: restarted
+
+    - name: Restart DHCP service
+      ansible.builtin.systemd:
+      name: dhcpd
+      state: restarted
+      become: true
+      register: dhcpd_restart
+      failed_when: dhcpd_restart is failed
+
+    - name: Show dhcpd status
+      ansible.builtin.command: systemctl --no-pager -l status dhcpd
+      become: true
+      register: dhcpd_status
+      failed_when: false
+
+    - name: Show dhcpd journal
+      ansible.builtin.command: journalctl --no-pager -l -xeu dhcpd --since "10 minutes ago"
+      become: true
+      register: dhcpd_journal
+      failed_when: false
+    
+    - name: Print status+journal
+      ansible.builtin.debug:
+        msg:
+          - "{{ dhcpd_status.stdout }}"
+          - "{{ dhcpd_journal.stdout }}"
+
