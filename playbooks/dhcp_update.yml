@@ -80,3 +80,9 @@
               {{ dhcpd_status.stdout }}
               --- journalctl ---
               {{ dhcpd_journal.stdout }}
+
+      always:
+        - name: Remove candidate config
+          ansible.builtin.file:
+            path: "{{ candidate_conf }}"
+            state: absent
