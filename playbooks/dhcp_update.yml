@@ -5,18 +5,17 @@
   gather_facts: false
 
   vars:
-    # Remote paths
     remote_conf: "/etc/dhcp/dhcpd.conf"
     candidate_conf: "/tmp/dhcpd.conf.candidate"
+    backup_conf: "{{ remote_conf }}.bak.{{ lookup('pipe','date +%F-%H%M%S') }}"
 
   tasks:
-    - name: Ensure candidate directory ok
+    - name: Ensure /tmp ok
       ansible.builtin.file:
         path: /tmp
         state: directory
         mode: "1777"
 
-    # Jenkins workspace içindeki configs/dhcpd.conf dosyasını remote'a candidate olarak atıyoruz
     - name: Copy candidate config to remote
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../configs/dhcpd.conf"
@@ -35,43 +34,63 @@
         msg: "dhcpd -t failed: {{ dhcp_test.stderr | default(dhcp_test.stdout) }}"
       when: dhcp_test.rc != 0
 
-    - name: Backup current config
-      ansible.builtin.copy:
-        src: "{{ remote_conf }}"
-        dest: "{{ remote_conf }}.bak.{{ lookup('pipe','date +%F-%H%M%S') }}"
-        remote_src: true
+    - block:
+        - name: Backup current config
+          ansible.builtin.copy:
+            src: "{{ remote_conf }}"
+            dest: "{{ backup_conf }}"
+            remote_src: true
+            owner: root
+            group: root
+            mode: "0644"
 
-    - name: Deploy candidate to live
-      ansible.builtin.command: "mv {{ candidate_conf }} {{ remote_conf }}"
+        - name: Deploy candidate to live (copy, not mv)
+          ansible.builtin.copy:
+            src: "{{ candidate_conf }}"
+            dest: "{{ remote_conf }}"
+            remote_src: true
+            owner: root
+            group: root
+            mode: "0644"
 
-    - name: Restart DHCP service
-      ansible.builtin.systemd:
-        name: dhcpd
-        state: restarted
+        - name: Restart DHCP service
+          ansible.builtin.systemd:
+            name: dhcpd
+            state: restarted
 
-    - name: Restart DHCP service
-      ansible.builtin.systemd:
-        name: dhcpd
-        state: restarted
-      become: true
-      register: dhcpd_restart
-      failed_when: dhcpd_restart is failed
+      rescue:
+        - name: Collect dhcpd status
+          ansible.builtin.command: systemctl --no-pager -l status dhcpd
+          register: dhcpd_status
+          changed_when: false
+          failed_when: false
 
-    - name: Show dhcpd status
-      ansible.builtin.command: systemctl --no-pager -l status dhcpd
-      become: true
-      register: dhcpd_status
-      failed_when: false
+        - name: Collect dhcpd journal
+          ansible.builtin.command: journalctl --no-pager -l -xeu dhcpd --since "10 minutes ago"
+          register: dhcpd_journal
+          changed_when: false
+          failed_when: false
 
-    - name: Show dhcpd journal
-      ansible.builtin.command: journalctl --no-pager -l -xeu dhcpd --since "10 minutes ago"
-      become: true
-      register: dhcpd_journal
-      failed_when: false
-    
-    - name: Print status+journal
-      ansible.builtin.debug:
-        msg:
-          - "{{ dhcpd_status.stdout }}"
-          - "{{ dhcpd_journal.stdout }}"
+        - name: Rollback config from backup
+          ansible.builtin.copy:
+            src: "{{ backup_conf }}"
+            dest: "{{ remote_conf }}"
+            remote_src: true
+            owner: root
+            group: root
+            mode: "0644"
 
+        - name: Restart DHCP after rollback (best effort)
+          ansible.builtin.systemd:
+            name: dhcpd
+            state: restarted
+          failed_when: false
+
+        - name: Fail with details (so Jenkins console shows root cause)
+          ansible.builtin.fail:
+            msg: |
+              dhcpd restart failed; rolled back to previous config.
+              --- systemctl status ---
+              {{ dhcpd_status.stdout }}
+              --- journalctl ---
+              {{ dhcpd_journal.stdout }}
