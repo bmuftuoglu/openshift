@@ -10,24 +10,11 @@
     backup_conf: "{{ remote_conf }}.bak.{{ lookup('pipe','date +%F-%H%M%S') }}"
 
   tasks:
-    - name: Ensure /tmp ok
-      ansible.builtin.file:
-        path: /tmp
-        state: directory
-        mode: "1777"
-
     - name: Copy candidate config to remote
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../configs/dhcpd.conf"
         dest: "{{ candidate_conf }}"
-        owner: root
-        group: root
         mode: "0644"
-        
-    - name: Restore SELinux context on candidate (best effort)
-      ansible.builtin.command: "restorecon -v {{ candidate_conf }}"
-      changed_when: false
-      failed_when: false
 
     - name: Validate candidate config
       ansible.builtin.command: "dhcpd -t -cf {{ candidate_conf }}"
@@ -45,8 +32,6 @@
             src: "{{ remote_conf }}"
             dest: "{{ backup_conf }}"
             remote_src: true
-            owner: root
-            group: root
             mode: "0644"
 
         - name: Deploy candidate to live (copy, not mv)
@@ -54,8 +39,6 @@
             src: "{{ candidate_conf }}"
             dest: "{{ remote_conf }}"
             remote_src: true
-            owner: root
-            group: root
             mode: "0644"
 
         - name: Restart DHCP service
@@ -81,8 +64,6 @@
             src: "{{ backup_conf }}"
             dest: "{{ remote_conf }}"
             remote_src: true
-            owner: root
-            group: root
             mode: "0644"
 
         - name: Restart DHCP after rollback (best effort)
