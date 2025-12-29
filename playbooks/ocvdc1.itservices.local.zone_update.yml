@@ -1,0 +1,13 @@
+---
+- name: Append A record at end of forward zone file
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Append A record at end of file
+      ansible.builtin.lineinfile:
+        path: "{{ zone_file }}"
+        line: "{{ hostname }} IN   A   {{ IP }};"
+        insertafter: EOF
+        create: false
