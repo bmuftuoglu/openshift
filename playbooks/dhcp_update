@@ -1,0 +1,12 @@
+---
+- name: Add DHCP host at bottom of subnet (no markers)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Insert host block before subnet closing brace followed by PXE section
+      ansible.builtin.replace:
+        path: "{{ dhcp_conf }}"
+        regexp: '(?m)^\s*}\s*(?=\n\s*\n# PXE boot configuration\s*$)'
+        replace: "\n    # SERIAL {{ hw_serial }}\n    # ILO {{ ilo_ip }}\n    host {{ hostname }} {\n      hardware ethernet    {{ mac }};\n      fixed-address        {{ ip }};\n      option host-name     \"{{ hostname }}.ocvdc1.itservices.local\";\n    }\n}"
