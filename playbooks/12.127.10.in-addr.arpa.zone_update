@@ -1,0 +1,28 @@
+---
+- name: Add PTR record with auto-incremented index
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: Get max PTR index
+      ansible.builtin.shell: >
+        awk '$2=="IN" && $3=="PTR" {print $1}' {{ zone_file }} | sort -n | tail -1
+      register: ptr_raw
+      changed_when: false
+
+    - name: Fail if PTR not found
+      ansible.builtin.fail:
+        msg: "PTR kaydı bulunamadı"
+      when: ptr_raw.stdout | trim == ""
+
+    - name: Set next PTR
+      ansible.builtin.set_fact:
+        next_ptr: "{{ (ptr_raw.stdout | trim | int) + 1 }}"
+
+    - name: Insert new PTR record before OpenShift VIP Section
+      ansible.builtin.replace:
+        path: "{{ zone_file }}"
+        regexp: '(?m)^[ \t]*\r?\n(?=; OpenShift VIP PTR records[ \t]*$)'
+        replace: ";\n{{ next_ptr }}    IN PTR    {{ hostname }}.ocvdc1.itservices.local.\n\n"
