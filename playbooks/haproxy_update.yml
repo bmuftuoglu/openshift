@@ -1,0 +1,21 @@
+---
+- name: Add next worker to ingress-https (443)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Find last worker number in ingress-https (443)
+      ansible.builtin.shell: |
+        awk '$1=="backend"&&$2=="ingress-https"{b=1;next} b&&$1=="backend"{b=0}
+             b&&$1=="server"&&$2~/^ocvdc1worker[0-9]+$/{n=$2;sub(/^ocvdc1worker/,"",n); if(n>m)m=n}
+             END{print m}' {{ haproxy_conf }}
+      register: last
+      changed_when: false
+
+    - name: Add next worker line after last one (443)
+      ansible.builtin.lineinfile:
+        path: "{{ haproxy_conf }}"
+        insertafter: "^\\s*server\\s+ocvdc1worker{{ last.stdout|trim }}\\s+ocvdc1worker{{ last.stdout|trim }}\\.ocvdc1\\.itservices\\.local:443\\s+check\\s*$"
+        line: "    server {{ hostname }} {{ hostname }}.ocvdc1.itservices.local:443 check"
+        state: present
