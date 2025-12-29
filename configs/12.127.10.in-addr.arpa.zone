@@ -1,0 +1,41 @@
+$TTL 86400
+@    IN SOA    ns1.ocvdc1.itservices.local. admin.ocvdc1.itservices.local. (
+        2025112417 ; Serial
+        3600       ; Refresh
+        1800       ; Retry
+        604800     ; Expire
+        86400      ; Minimum TTL
+)
+ 
+@      IN NS     ns1.ocvdc1.itservices.local.
+ 
+54    IN PTR    ocvdc1bootstrap1.ocvdc1.itservices.local.
+;
+55    IN PTR    ocvdc1infra1.ocvdc1.itservices.local.
+;
+56    IN PTR    ocvdc1infra2.ocvdc1.itservices.local.
+;
+57    IN PTR    ocvdc1infra3.ocvdc1.itservices.local.
+;
+58    IN PTR    ocvdc1master1.ocvdc1.itservices.local.
+;
+59    IN PTR    ocvdc1master2.ocvdc1.itservices.local.
+;
+60    IN PTR    ocvdc1master3.ocvdc1.itservices.local.
+;
+61    IN PTR    ocvdc1worker1.ocvdc1.itservices.local.
+;
+62    IN PTR    ocvdc1worker2.ocvdc1.itservices.local.
+;
+63    IN PTR    ocvdc1worker3.ocvdc1.itservices.local.
+;
+64    IN PTR    ocvdc1worker4.ocvdc1.itservices.local.
+;
+65    IN PTR    ocvdc1worker5.ocvdc1.itservices.local.
+;
+66    IN PTR    ocvdc1worker6.ocvdc1.itservices.local.
+ 
+; OpenShift VIP PTR records
+53    IN PTR    api.ocvdc1.itservices.local.
+53    IN PTR    api-int.ocvdc1.itservices.local.
+53    IN PTR    apps.ocvdc1.itservices.local.
