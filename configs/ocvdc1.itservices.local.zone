@@ -1,0 +1,30 @@
+$TTL 86400
+@    IN SOA    ns1.ocvdc1.itservices.local. admin.ocvdc1.itservices.local. (
+        2025112417 ; Serial
+        3600       ; Refresh
+        1800       ; Retry
+        604800     ; Expire
+        86400      ; Minimum TTL
+)
+ 
+@      IN NS     ns1.ocvdc1.itservices.local.
+ns1    IN A      10.127.12.54
+ 
+; OpenShift Cluster Records
+api             IN A      10.127.12.53
+api-int         IN A      10.127.12.53
+*.apps          IN A      10.127.12.53
+ 
+ocvdc1bootstrap1 IN   A   10.127.12.54;
+ocvdc1infra1   IN   A   10.127.12.55;
+ocvdc1infra2   IN   A   10.127.12.56;
+ocvdc1infra3   IN   A   10.127.12.57;
+ocvdc1master1  IN   A   10.127.12.58;
+ocvdc1master2  IN   A   10.127.12.59;
+ocvdc1master3  IN   A   10.127.12.60;
+ocvdc1worker1  IN   A   10.127.12.61;
+ocvdc1worker2  IN   A   10.127.12.62;
+ocvdc1worker3  IN   A   10.127.12.63;
+ocvdc1worker4  IN   A   10.127.12.64;
+ocvdc1worker5  IN   A   10.127.12.65;
+ocvdc1worker6  IN   A   10.127.12.66
