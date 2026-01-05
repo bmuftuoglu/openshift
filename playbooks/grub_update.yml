@@ -17,11 +17,6 @@
       ansible.builtin.shell: |
         cp "../configs/grub.cfg-ocvdc1worker6.ocvdc1.itservices.local" \
            "../configs/grub.cfg-{{ hostname }}.ocvdc1.itservices.local"
-
-    - name: Create symbolic link using ln -s with HEX IP
-      ansible.builtin.shell: |
-        ln -s "../configs/grub.cfg-{{ hostname }}.ocvdc1.itservices.local" \
-               "../configs/grub.cfg-{{ ip_hex.stdout }}"
   
     - name: Replace IP address inside config
       ansible.builtin.replace:
