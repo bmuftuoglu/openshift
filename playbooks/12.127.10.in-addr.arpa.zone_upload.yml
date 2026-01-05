@@ -1,0 +1,90 @@
+---
+- name: Reverse DNS zone update (GitHub -> candidate -> named-checkzone -> deploy)
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    zone_name: "12.127.10.in-addr.arpa"
+    remote_conf: "/var/named/12.127.10.in-addr.arpa.zone"
+    candidate_conf: "/var/named/12.127.10.in-addr.arpa.zone.candidate"
+    backup_conf: "{{ remote_conf }}.bak.{{ lookup('pipe','date +%F-%H%M%S') }}"
+
+  tasks:
+    - name: Copy candidate zone file to remote
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../configs/12.127.10.in-addr.arpa.zone"
+        dest: "{{ candidate_conf }}"
+        mode: "0644"
+
+    - name: Validate candidate zone file
+      ansible.builtin.command: >
+        named-checkzone {{ zone_name }} {{ candidate_conf }}
+      register: zone_test
+      changed_when: false
+
+    - name: Fail if zone validation failed
+      ansible.builtin.fail:
+        msg: "named-checkzone failed: {{ zone_test.stderr | default(zone_test.stdout) }}"
+      when: zone_test.rc != 0
+
+    - block:
+        - name: Backup current zone file
+          ansible.builtin.copy:
+            src: "{{ remote_conf }}"
+            dest: "{{ backup_conf }}"
+            remote_src: true
+            mode: "0644"
+
+        - name: Deploy candidate zone to live (copy, not mv)
+          ansible.builtin.copy:
+            src: "{{ candidate_conf }}"
+            dest: "{{ remote_conf }}"
+            remote_src: true
+            mode: "0644"
+
+        - name: Reload named service
+          ansible.builtin.systemd:
+            name: named
+            state: reloaded
+
+      rescue:
+        - name: Collect named status
+          ansible.builtin.command: systemctl --no-pager -l status named
+          register: named_status
+          changed_when: false
+          failed_when: false
+
+        - name: Collect named journal
+          ansible.builtin.command: journalctl --no-pager -l -xeu named --since "10 minutes ago"
+          register: named_journal
+          changed_when: false
+          failed_when: false
+
+        - name: Rollback zone file from backup
+          ansible.builtin.copy:
+            src: "{{ backup_conf }}"
+            dest: "{{ remote_conf }}"
+            remote_src: true
+            mode: "0644"
+
+        - name: Reload named after rollback (best effort)
+          ansible.builtin.systemd:
+            name: named
+            state: reloaded
+          failed_when: false
+
+        - name: Fail with details (so Jenkins console shows root cause)
+          ansible.builtin.fail:
+            msg: |
+              Reverse DNS zone reload failed; rolled back to previous zone file.
+              --- systemctl status ---
+              {{ named_status.stdout }}
+              --- journalctl ---
+              {{ named_journal.stdout }}
+
+      always:
+        - name: Remove candidate zone file
+          ansible.builtin.file:
+            path: "{{ candidate_conf }}"
+            state: absent
