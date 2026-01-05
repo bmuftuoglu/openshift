@@ -1,31 +1,12 @@
 ---
-- name: Generate grub.cfg and create HEX-based symlink
+- name: Generate grub.cfg
   hosts: localhost
   gather_facts: false
 
-  vars:
-    domain: "ocvdc1.itservices.local"
-
   tasks:
-
-    - name: Convert IP to HEX
-      ansible.builtin.shell: |
-        printf "%02X%02X%02X%02X\n" $(echo "{{ ip }}" | tr '.' ' ')
-      register: ip_hex
 
     - name: Copy file using shell
       ansible.builtin.shell: |
         cp "../configs/grub.cfg-ocvdc1worker6.ocvdc1.itservices.local" \
            "../configs/grub.cfg-{{ hostname }}.ocvdc1.itservices.local"
   
-    - name: Replace IP address inside config
-      ansible.builtin.replace:
-        path: "../configs/grub.cfg-{{ ip_hex.stdout }}"
-        regexp: 'ip=[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'
-        replace: "ip={{ ip }}"
-
-    - name: Replace hostname (FQDN) inside config
-      ansible.builtin.replace:
-        path: "../configs/grub.cfg-{{ ip_hex.stdout }}"
-        regexp: '[a-zA-Z0-9.-]+\.{{ domain | regex_escape() }}'
-        replace: "{{ hostname }}.{{ domain }}"
