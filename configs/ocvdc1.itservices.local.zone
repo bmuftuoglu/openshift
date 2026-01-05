@@ -27,4 +27,4 @@ ocvdc1worker2  IN   A   10.127.12.62;
 ocvdc1worker3  IN   A   10.127.12.63;
 ocvdc1worker4  IN   A   10.127.12.64;
 ocvdc1worker5  IN   A   10.127.12.65;
-ocvdc1worker6  IN   A   10.127.12.66
+ocvdc1worker6  IN   A   10.127.12.66;
