@@ -1,0 +1,34 @@
+---
+- name: Upload generated GRUB files (hostname file + HEX symlink)
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    domain: "ocvdc1.itservices.local"
+    remote_dir: "/var/lib/tftpboot"
+
+  tasks:
+  
+    - name: Convert IP to HEX
+      ansible.builtin.shell: |
+        printf "%02X%02X%02X%02X\n" $(echo "{{ ip }}" | tr '.' ' ')
+      register: ip_hex
+
+    - name: Set paths
+      ansible.builtin.set_fact:
+        fqdn: "{{ hostname }}.{{ domain }}"
+        src_grub: "/../configs/grub.cfg-{{ hostname }}.{{ domain }}"
+        dst_grub: "{{ remote_dir }}/grub.cfg-{{ hostname }}.{{ domain }}"
+        dst_hex_link: "{{ remote_dir }}/grub.cfg-{{ ip_hex.stdout }}"
+
+    - name: Upload GRUB config (hostname-based file)
+      ansible.builtin.copy:
+        src: "{{ src_grub }}"
+        dest: "{{ dst_grub }}"
+        mode: "0644"
+
+    - name: Create symbolic link using ln -s with HEX IP
+      ansible.builtin.shell: |
+        ln -s "{{ dst_grub }}" \
+               "{{ dst_hex_link }}"
