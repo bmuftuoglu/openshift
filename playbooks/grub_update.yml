@@ -1,7 +1,6 @@
 ---
 - name: Generate grub.cfg and create HEX-based symlink
   hosts: localhost
-  become: true
   gather_facts: false
 
   vars:
