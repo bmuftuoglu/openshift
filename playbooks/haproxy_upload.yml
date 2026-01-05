@@ -1,0 +1,88 @@
+---
+- name: HAProxy config update (GitHub -> candidate -> haproxy -c -> deploy)
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    remote_conf: "/etc/haproxy/haproxy.cfg"
+    candidate_conf: "/etc/haproxy/haproxy.cfg.candidate"
+    backup_conf: "{{ remote_conf }}.bak.{{ lookup('pipe','date +%F-%H%M%S') }}"
+
+  tasks:
+    - name: Copy candidate config to remote
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../configs/haproxy.cfg"
+        dest: "{{ candidate_conf }}"
+        mode: "0644"
+
+    - name: Validate candidate config
+      ansible.builtin.command: "haproxy -c -f {{ candidate_conf }}"
+      register: haproxy_test
+      changed_when: false
+
+    - name: Fail if validation failed
+      ansible.builtin.fail:
+        msg: "haproxy -c failed: {{ haproxy_test.stderr | default(haproxy_test.stdout) }}"
+      when: haproxy_test.rc != 0
+
+    - block:
+        - name: Backup current config
+          ansible.builtin.copy:
+            src: "{{ remote_conf }}"
+            dest: "{{ backup_conf }}"
+            remote_src: true
+            mode: "0644"
+
+        - name: Deploy candidate to live (copy, not mv)
+          ansible.builtin.copy:
+            src: "{{ candidate_conf }}"
+            dest: "{{ remote_conf }}"
+            remote_src: true
+            mode: "0644"
+
+        - name: Restart HAProxy service
+          ansible.builtin.systemd:
+            name: haproxy
+            state: restarted
+
+      rescue:
+        - name: Collect haproxy status
+          ansible.builtin.command: systemctl --no-pager -l status haproxy
+          register: haproxy_status
+          changed_when: false
+          failed_when: false
+
+        - name: Collect haproxy journal
+          ansible.builtin.command: journalctl --no-pager -l -xeu haproxy --since "10 minutes ago"
+          register: haproxy_journal
+          changed_when: false
+          failed_when: false
+
+        - name: Rollback config from backup
+          ansible.builtin.copy:
+            src: "{{ backup_conf }}"
+            dest: "{{ remote_conf }}"
+            remote_src: true
+            mode: "0644"
+
+        - name: Restart HAProxy after rollback (best effort)
+          ansible.builtin.systemd:
+            name: haproxy
+            state: restarted
+          failed_when: false
+
+        - name: Fail with details (so Jenkins console shows root cause)
+          ansible.builtin.fail:
+            msg: |
+              haproxy restart failed; rolled back to previous config.
+              --- systemctl status ---
+              {{ haproxy_status.stdout }}
+              --- journalctl ---
+              {{ haproxy_journal.stdout }}
+
+      always:
+        - name: Remove candidate config
+          ansible.builtin.file:
+            path: "{{ candidate_conf }}"
+            state: absent
